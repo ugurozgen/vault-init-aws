@@ -1,7 +1,7 @@
 # vault-init
 
-This is a port of [Kelsey Hightower](https://github.com/kelseyhightower) `vault-init` to AWS.
- 
+This is a port of [Kelsey Hightower](https://github.com/kelseyhightower) (`vault-init`)[https://github.com/kelseyhightower/vault-init] to AWS.
+
 The `vault-init` service automates the process of [initializing](https://www.vaultproject.io/docs/commands/operator/init.html) and [unsealing](https://www.vaultproject.io/docs/concepts/seal.html#unsealing) HashiCorp Vault instances running on [Amazon Web Services](http://aws.amazon.com/).
 
 After `vault-init` initializes a Vault server it stores master keys and root tokens, encrypted using [AWS Key Management Service](https://aws.amazon.com/kms/), to a user defined [Amazon S3](https://aws.amazon.com/s3/) bucket.
