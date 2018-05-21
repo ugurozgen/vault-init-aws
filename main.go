@@ -149,7 +149,7 @@ func initialize() {
 	}
 
 	if response.StatusCode != 200 {
-		log.Printf("Non 200 status code: %s", response.StatusCode)
+		log.Printf("Non 200 status code: %d", response.StatusCode)
 		return
 	}
 
@@ -167,12 +167,11 @@ func initialize() {
 		log.Println("Error creating session: ", err)
 	}
 
-	KMSSvc := kms.New(AWSSession)
-
-	S3Svc := s3.New(AWSSession)
+	KMSService := kms.New(AWSSession)
+	S3Service := s3.New(AWSSession)
 
 	// Encrypt root token.
-	rootTokenEncryptedData, err := KMSSvc.Encrypt(&kms.EncryptInput{
+	rootTokenEncryptedData, err := KMSService.Encrypt(&kms.EncryptInput{
 		KeyId:     aws.String(kmsKeyId),
 		Plaintext: []byte(initResponse.RootToken),
 	})
@@ -181,7 +180,7 @@ func initialize() {
 	}
 
 	// Encrypt unseal keys.
-	unsealKeysEncryptedData, err := KMSSvc.Encrypt(&kms.EncryptInput{
+	unsealKeysEncryptedData, err := KMSService.Encrypt(&kms.EncryptInput{
 		KeyId:     aws.String(kmsKeyId),
 		Plaintext: []byte(base64.StdEncoding.EncodeToString(initRequestResponseBody)),
 	})
@@ -196,7 +195,7 @@ func initialize() {
 		Key:    aws.String("root-token.json.enc"),
 	}
 
-	_, err = S3Svc.PutObject(rootTokenPutRequest)
+	_, err = S3Service.PutObject(rootTokenPutRequest)
 	if err != nil {
 		log.Printf("Cannot write root token to bucket s3://%s/%s: %s", s3BucketName, "root-token.json.enc", err)
 	} else {
@@ -210,9 +209,9 @@ func initialize() {
 		Key:    aws.String("unseal-keys.json.enc"),
 	}
 
-	_, err = S3Svc.PutObject(unsealKeysEncryptRequest)
+	_, err = S3Service.PutObject(unsealKeysEncryptRequest)
 	if err != nil {
-		log.Println("Cannot write unseal keys to bucket s3://%s/%s: %s", s3BucketName, "unseal-keys.json.enc", err)
+		log.Printf("Cannot write unseal keys to bucket s3://%s/%s: %s", s3BucketName, "unseal-keys.json.enc", err)
 	} else {
 		log.Printf("Unseal keys written to s3://%s/%s", s3BucketName, "unseal-keys.json.enc")
 	}
@@ -227,16 +226,15 @@ func unseal() {
 		log.Println("Error creating session: ", err)
 	}
 
-	KMSSvc := kms.New(AWSSession)
-
-	S3Svc := s3.New(AWSSession)
+	KMSService := kms.New(AWSSession)
+	S3Service := s3.New(AWSSession)
 
 	unsealKeysRequest := &s3.GetObjectInput{
 		Bucket: aws.String(s3BucketName),
 		Key:    aws.String("unseal-keys.json.enc"),
 	}
 
-	unsealKeysEncryptedObject, err := S3Svc.GetObject(unsealKeysRequest)
+	unsealKeysEncryptedObject, err := S3Service.GetObject(unsealKeysRequest)
 	if err != nil {
 		log.Println(err)
 		return
@@ -247,7 +245,7 @@ func unseal() {
 		log.Println(err)
 	}
 
-	unsealKeysData, err := KMSSvc.Decrypt(&kms.DecryptInput{
+	unsealKeysData, err := KMSService.Decrypt(&kms.DecryptInput{
 		CiphertextBlob: unsealKeysEncryptedObjectData,
 	})
 	if err != nil {
@@ -292,7 +290,7 @@ func unseal() {
 		}
 
 		if response.StatusCode != 200 {
-			log.Printf("Non 200 status code: %s", response.StatusCode)
+			log.Printf("Non 200 status code: %d", response.StatusCode)
 			break
 		}
 
