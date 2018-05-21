@@ -250,6 +250,10 @@ func unseal() {
 	unsealKeysData, err := KMSSvc.Decrypt(&kms.DecryptInput{
 		CiphertextBlob: unsealKeysEncryptedObjectData,
 	})
+	if err != nil {
+		log.Println(err)
+		return
+	}
 
 	var initResponse InitResponse
 
