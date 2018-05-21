@@ -1,8 +1,8 @@
 # vault-init
 
-The `vault-init` service automates the process of [initializing](https://www.vaultproject.io/docs/commands/operator/init.html) and [unsealing](https://www.vaultproject.io/docs/concepts/seal.html#unsealing) HashiCorp Vault instances running on [Google Cloud Platform](https://cloud.google.com).
+The `vault-init` service automates the process of [initializing](https://www.vaultproject.io/docs/commands/operator/init.html) and [unsealing](https://www.vaultproject.io/docs/concepts/seal.html#unsealing) HashiCorp Vault instances running on [Amazon Web Services](http://aws.amazon.com/).
 
-After `vault-init` initializes a Vault server it stores master keys and root tokens, encrypted using [Google Cloud KMS](https://cloud.google.com/kms), to a user defined [Google Cloud Storage](https://cloud.google.com/storage) bucket.
+After `vault-init` initializes a Vault server it stores master keys and root tokens, encrypted using [AWS Key Management Service](https://aws.amazon.com/kms/), to a user defined [Amazon S3](https://aws.amazon.com/s3/) bucket.
 
 ## Usage
 
@@ -17,13 +17,13 @@ Run `vault-init` in the same Pod as the Vault container. See the [vault stateful
 The vault-init service supports the following environment variables for configuration:
 
 * `CHECK_INTERVAL` - The time in seconds between Vault health checks. (300)
-* `GCS_BUCKET_NAME` - The Google Cloud Storage Bucket where the vault master key and root token is stored. 
-* `KMS_KEY_ID` - The Google Cloud KMS key ID used to encrypt and decrypt the vault master key and root token.
+* `S3_BUCKET_NAME` - The Amazon S3 Bucket where the vault master key and root token is stored. 
+* `KMS_KEY_ID` - The Amazon KMS key ID used to encrypt and decrypt the vault master key and root token.
 
 ### Example Values
 
 ```
 CHECK_INTERVAL="300"
-GCS_BUCKET_NAME="vault-storage"
-KMS_KEY_ID="projects/my-project/locations/global/keyRings/my-keyring/cryptoKeys/key"
+S3_BUCKET_NAME="vault-storage"
+KMS_KEY_ID="arn:aws:kms:us-east-1:1234567819:key/dead-beef-dead-beef-deadbeefdead"
 ```
