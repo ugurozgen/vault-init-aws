@@ -41,16 +41,16 @@ spec:
               topologyKey: kubernetes.io/hostname
       containers:
         - name: vault-init
-          image: gcr.io/hightowerlabs/vault-init
+          image: gcr.io/caquinolabs/vault-init
           imagePullPolicy: Always
           env:
             - name: CHECK_INTERVAL
               value: "10"
-            - name: GCS_BUCKET_NAME
+            - name: S3_BUCKET_NAME
               valueFrom:
                 configMapKeyRef:
                   name: vault
-                  key: gcs-bucket-name
+                  key: s3-bucket-name
             - name: "KMS_KEY_ID"
               valueFrom:
                 configMapKeyRef:
