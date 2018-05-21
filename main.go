@@ -163,7 +163,6 @@ func initialize() {
 	log.Println("Encrypting unseal keys and the root token and uploading to bucket...")
 
 	AWSSession, err := session.NewSession()
-
 	if err != nil {
 		log.Println("Error creating session: ", err)
 	}
@@ -177,7 +176,6 @@ func initialize() {
 		KeyId:     aws.String(kmsKeyId),
 		Plaintext: []byte(initResponse.RootToken),
 	})
-
 	if err != nil {
 		log.Println("Error encrypting root token: ", err)
 	}
@@ -187,7 +185,6 @@ func initialize() {
 		KeyId:     aws.String(kmsKeyId),
 		Plaintext: []byte(base64.StdEncoding.EncodeToString(initRequestResponseBody)),
 	})
-
 	if err != nil {
 		log.Println("Error encrypting unseal keys: ", err)
 	}
@@ -200,7 +197,6 @@ func initialize() {
 	}
 
 	_, err = S3Svc.PutObject(rootTokenPutRequest)
-
 	if err != nil {
 		log.Printf("Cannot write root token to bucket s3://%s/%s: %s", s3BucketName, "root-token.json.enc", err)
 	} else {
@@ -215,7 +211,6 @@ func initialize() {
 	}
 
 	_, err = S3Svc.PutObject(unsealKeysEncryptRequest)
-
 	if err != nil {
 		log.Println("Cannot write unseal keys to bucket s3://%s/%s: %s", s3BucketName, "unseal-keys.json.enc", err)
 	} else {
@@ -228,7 +223,6 @@ func initialize() {
 func unseal() {
 
 	AWSSession, err := session.NewSession()
-
 	if err != nil {
 		log.Println("Error creating session: ", err)
 	}
