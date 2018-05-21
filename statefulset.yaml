@@ -41,7 +41,7 @@ spec:
               topologyKey: kubernetes.io/hostname
       containers:
         - name: vault-init
-          image: gcr.io/caquinolabs/vault-init
+          image: gcr.io/caquinolabs/vault-init-aws
           imagePullPolicy: Always
           env:
             - name: CHECK_INTERVAL
