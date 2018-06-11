@@ -9,6 +9,7 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -23,6 +24,7 @@ import (
 )
 
 var (
+	vaultAddr     string
 	checkInterval string
 	s3BucketName  string
 	httpClient    http.Client
@@ -59,6 +61,11 @@ type UnsealResponse struct {
 func main() {
 	log.Println("Starting the vault-init service...")
 
+	vaultAddr = os.Getenv("VAULT_ADDR")
+	if vaultAddr == "" {
+		vaultAddr = "https://127.0.0.1:8200"
+	}
+
 	checkInterval = os.Getenv("CHECK_INTERVAL")
 	if checkInterval == "" {
 		checkInterval = "10"
@@ -90,7 +97,11 @@ func main() {
 	}
 
 	for {
-		response, err := httpClient.Get("https://127.0.0.1:8200/v1/sys/health")
+		response, err := httpClient.Get(vaultAddr + "/v1/sys/health")
+		if response != nil && response.Body != nil {
+			response.Body.Close()
+		}
+
 		if err != nil {
 			log.Println(err)
 			time.Sleep(checkIntervalDuration)
@@ -130,7 +141,9 @@ func initialize() {
 		return
 	}
 
-	request, err := http.NewRequest("PUT", "https://127.0.0.1:8200/v1/sys/init", bytes.NewReader(initRequestData))
+	r := bytes.NewReader(initRequestData)
+
+	request, err := http.NewRequest("PUT", vaultAddr+"/v1/sys/init", r)
 	if err != nil {
 		log.Println(err)
 		return
@@ -149,7 +162,7 @@ func initialize() {
 	}
 
 	if response.StatusCode != 200 {
-		log.Printf("Non 200 status code: %d", response.StatusCode)
+		log.Printf("init: non 200 status code: %d", response.StatusCode)
 		return
 	}
 
@@ -267,48 +280,57 @@ func unseal() {
 	}
 
 	for _, key := range initResponse.KeysBase64 {
-		unsealRequest := UnsealRequest{
-			Key: key,
+		done, err := unsealOne(key)
+		if done {
+			return
 		}
 
-		unsealRequestData, err := json.Marshal(&unsealRequest)
 		if err != nil {
 			log.Println(err)
-			break
-		}
-
-		request, err := http.NewRequest("PUT", "https://127.0.0.1:8200/v1/sys/unseal", bytes.NewReader(unsealRequestData))
-		if err != nil {
-			log.Println(err)
-			break
-		}
-
-		response, err := httpClient.Do(request)
-		if err != nil {
-			log.Println(err)
-			break
-		}
-
-		if response.StatusCode != 200 {
-			log.Printf("Non 200 status code: %d", response.StatusCode)
-			break
-		}
-
-		unsealRequestResponseBody, err := ioutil.ReadAll(response.Body)
-		if err != nil {
-			log.Println(err)
-			break
-		}
-
-		var unsealResponse UnsealResponse
-		if err := json.Unmarshal(unsealRequestResponseBody, &unsealResponse); err != nil {
-			log.Println(err)
-			break
-		}
-
-		if !unsealResponse.Sealed {
-			log.Println("Unseal complete.")
-			break
+			return
 		}
 	}
+}
+
+func unsealOne(key string) (bool, error) {
+	unsealRequest := UnsealRequest{
+		Key: key,
+	}
+
+	unsealRequestData, err := json.Marshal(&unsealRequest)
+	if err != nil {
+		return false, err
+	}
+
+	r := bytes.NewReader(unsealRequestData)
+	request, err := http.NewRequest(http.MethodPut, vaultAddr+"/v1/sys/unseal", r)
+	if err != nil {
+		return false, err
+	}
+
+	response, err := httpClient.Do(request)
+	if err != nil {
+		return false, err
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != 200 {
+		return false, fmt.Errorf("unseal: non-200 status code: %d", response.StatusCode)
+	}
+
+	unsealRequestResponseBody, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return false, err
+	}
+
+	var unsealResponse UnsealResponse
+	if err := json.Unmarshal(unsealRequestResponseBody, &unsealResponse); err != nil {
+		return false, err
+	}
+
+	if !unsealResponse.Sealed {
+		return true, nil
+	}
+
+	return false, nil
 }
