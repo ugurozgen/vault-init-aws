@@ -19,8 +19,9 @@ Run `vault-init` in the same Pod as the Vault container. See the [vault stateful
 The vault-init service supports the following environment variables for configuration:
 
 * `CHECK_INTERVAL` - The time in seconds between Vault health checks. (300)
-* `S3_BUCKET_NAME` - The Amazon S3 Bucket where the vault master key and root token is stored. 
+* `S3_BUCKET_NAME` - The Amazon S3 Bucket where the vault master key and root token is stored.
 * `KMS_KEY_ID` - The Amazon KMS key ID used to encrypt and decrypt the vault master key and root token.
+* `VAULT_ADDR` - The vault API address.
 
 ### Example Values
 
