@@ -29,4 +29,5 @@ The vault-init service supports the following environment variables for configur
 CHECK_INTERVAL="300"
 S3_BUCKET_NAME="vault-storage"
 KMS_KEY_ID="arn:aws:kms:us-east-1:1234567819:key/dead-beef-dead-beef-deadbeefdead"
+VAULT_ADDR="https://vault.service.consul:8200"
 ```
