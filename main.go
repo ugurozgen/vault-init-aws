@@ -91,10 +91,10 @@ func main() {
 	timeout := time.Duration(2 * time.Second)
 	
 	httpClient = http.Client{
+		Timeout: timeout,
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: true,
-				Timeout: timeout
 			},
 		},
 	}
