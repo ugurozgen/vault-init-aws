@@ -87,8 +87,11 @@ func main() {
 	if kmsKeyId == "" {
 		log.Fatal("KMS_KEY_ID must be set and not empty")
 	}
-
+	
+	timeout := time.Duration(2 * time.Second)
+	
 	httpClient = http.Client{
+		Timeout: timeout,
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: true,
