@@ -20,6 +20,7 @@ The vault-init service supports the following environment variables for configur
 
 * `CHECK_INTERVAL` - The time in seconds between Vault health checks. (300)
 * `S3_BUCKET_NAME` - The Amazon S3 Bucket where the vault master key and root token is stored.
+* `S3_PATH` - The Amazon S3 Bucket folder path where the vault master key and root token is stored. Put `/` end of path
 * `KMS_KEY_ID` - The Amazon KMS key ID used to encrypt and decrypt the vault master key and root token.
 * `VAULT_ADDR` - The vault API address.
 
@@ -28,110 +29,21 @@ The vault-init service supports the following environment variables for configur
 ```
 CHECK_INTERVAL="300"
 S3_BUCKET_NAME="vault-storage"
+S3_PATH="staging/"
 KMS_KEY_ID="arn:aws:kms:us-east-1:1234567819:key/dead-beef-dead-beef-deadbeefdead"
 VAULT_ADDR="https://vault.service.consul:8200"
 ```
 
-### AWS
-
-The `vault-init` service needs the following set of resources:
-
-- S3 Bucket
-- IAM Role + Instance Profile
-- KMS Key
-
-Here's a minimal example which creates an instance profile that can use a KMS key and read/write to a private S3 bucket.
-
-```hcl
-resource "aws_iam_role" "vault" {
-  assume_role_policy = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Action": "sts:AssumeRole",
-      "Principal": {"Service": "ec2.amazonaws.com"},
-      "Effect": "Allow"
-    }
-  ]
-}
-EOF
-}
-
-# use the current caller's ARN as the KMS key administrator
-data "aws_caller_identity" "current" {}
-
-resource "aws_kms_key" "vault" {
-  policy      = <<EOF
-{
-  "Version": "2012-10-17",
-  "Id": "vault-key-policy",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {"AWS": "${data.aws_caller_identity.current.arn}"},
-      "Action": "kms:*",
-      "Resource": "*"
-    },
-    {
-      "Effect": "Allow",
-      "Principal": {"AWS": "${aws_iam_role.vault.arn}"},
-      "Action": [
-	"kms:Encrypt",
-	"kms:Decrypt",
-	"kms:ReEncrypt*",
-	"kms:GenerateDataKey*",
-	"kms:DescribeKey"
-      ],
-      "Resource": "*"
-    }
-  ]
-}
-EOF
-}
-
-resource "aws_kms_alias" "vault" {
-  name          = "alias/my-vault-key"
-  target_key_id = "${aws_kms_key.vault.key_id}"
-}
-
-resource "aws_s3_bucket" "vault" {
-  acl = "private"
-}
-
-resource "aws_iam_role_policy" "vault" {
-  role	 = "${aws_iam_role.vault.id}"
-  policy = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Action": [
-	"kms:ReEncrypt*",
-	"kms:GenerateDataKey*",
-	"kms:Encrypt",
-	"kms:DescribeKey",
-	"kms:Decrypt"
-      ],
-      "Effect": "Allow",
-      "Resource": "${aws_kms_alias.vault.arn}"
-    },
-    {
-      "Action": "s3:ListBucket",
-      "Effect": "Allow",
-      "Resource": "${aws_s3_bucket.vault.arn}"
-    },
-    {
-      "Action": ["s3:GetObject", "s3:PutObject"],
-      "Effect": "Allow",
-      "Resource": "${aws_s3_bucket.vault.arn}/*"
-    }
-  ]
-}
-EOF
-}
-
-resource "aws_iam_instance_profile" "vault" {
-  role = "${aws_iam_role.vault.name}"
-}
+### Docker run 
 ```
+docker run \
+    -e CHECK_INTERVAL="10" \
+    -e S3_BUCKET_NAME="any-bucket-name" \
+    -e KMS_KEY_ID="any-kms-key-id" \
+    -e S3_PATH="any-path-ending-with-slash/" \
+    -e VAULT_ADDR=http://any-vault-address:8200 \
+    -v ~/.aws:/home/newuser/.aws \ # this is mandatory cause it uses your default aws credentials
+    ugurozgen/vault-init:0.0.5
+```
+### AWS
+It works with your default aws credentials.

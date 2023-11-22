@@ -29,6 +29,7 @@ var (
 	s3BucketName  string
 	httpClient    http.Client
 	kmsKeyId      string
+	awsRegion     string
 )
 
 // InitRequest holds a Vault init request.
@@ -88,6 +89,11 @@ func main() {
 		log.Fatal("KMS_KEY_ID must be set and not empty")
 	}
 
+	// awsRegion = os.Getenv("AWS_REGION")
+	// if awsRegion == "" {
+	// 	log.Fatal("AWS_REGION must be set and not empty")
+	// }
+
 	timeout := time.Duration(2 * time.Second)
 
 	httpClient = http.Client{
@@ -114,6 +120,7 @@ func main() {
 		switch response.StatusCode {
 		case 200:
 			log.Println("Vault is initialized and unsealed.")
+			os.Exit(0)
 		case 429:
 			log.Println("Vault is unsealed and in standby mode.")
 		case 501:
@@ -178,10 +185,9 @@ func initialize() {
 
 	log.Println("Encrypting unseal keys and the root token and uploading to bucket...")
 
-	AWSSession, err := session.NewSession()
-	if err != nil {
-		log.Println("Error creating session: ", err)
-	}
+	AWSSession := session.Must(session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	}))
 
 	KMSService := kms.New(AWSSession)
 	S3Service := s3.New(AWSSession)
@@ -208,28 +214,28 @@ func initialize() {
 	rootTokenPutRequest := &s3.PutObjectInput{
 		Body:   bytes.NewReader(rootTokenEncryptedData.CiphertextBlob),
 		Bucket: aws.String(s3BucketName),
-		Key:    aws.String("root-token.json.enc"),
+		Key:    aws.String(os.Getenv("S3_PATH") + "root-token.json.enc"),
 	}
 
 	_, err = S3Service.PutObject(rootTokenPutRequest)
 	if err != nil {
-		log.Printf("Cannot write root token to bucket s3://%s/%s: %s", s3BucketName, "root-token.json.enc", err)
+		log.Printf("Cannot write root token to bucket s3://%s/%s: %s", s3BucketName, os.Getenv("S3_PATH")+"root-token.json.enc", err)
 	} else {
-		log.Printf("Root token written to s3://%s/%s", s3BucketName, "root-token.json.enc")
+		log.Printf("Root token written to s3://%s/%s", s3BucketName, os.Getenv("S3_PATH")+"root-token.json.enc")
 	}
 
 	// Save the encrypted unseal keys.
 	unsealKeysEncryptRequest := &s3.PutObjectInput{
 		Body:   bytes.NewReader(unsealKeysEncryptedData.CiphertextBlob),
 		Bucket: aws.String(s3BucketName),
-		Key:    aws.String("unseal-keys.json.enc"),
+		Key:    aws.String(os.Getenv("S3_PATH") + "unseal-keys.json.enc"),
 	}
 
 	_, err = S3Service.PutObject(unsealKeysEncryptRequest)
 	if err != nil {
-		log.Printf("Cannot write unseal keys to bucket s3://%s/%s: %s", s3BucketName, "unseal-keys.json.enc", err)
+		log.Printf("Cannot write unseal keys to bucket s3://%s/%s: %s", s3BucketName, os.Getenv("S3_PATH")+"unseal-keys.json.enc", err)
 	} else {
-		log.Printf("Unseal keys written to s3://%s/%s", s3BucketName, "unseal-keys.json.enc")
+		log.Printf("Unseal keys written to s3://%s/%s", s3BucketName, os.Getenv("S3_PATH")+"unseal-keys.json.enc")
 	}
 
 	log.Println("Initialization complete.")
@@ -237,17 +243,16 @@ func initialize() {
 
 func unseal() {
 
-	AWSSession, err := session.NewSession()
-	if err != nil {
-		log.Println("Error creating session: ", err)
-	}
+	AWSSession := session.Must(session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	}))
 
 	KMSService := kms.New(AWSSession)
 	S3Service := s3.New(AWSSession)
 
 	unsealKeysRequest := &s3.GetObjectInput{
 		Bucket: aws.String(s3BucketName),
-		Key:    aws.String("unseal-keys.json.enc"),
+		Key:    aws.String(os.Getenv("S3_PATH") + "unseal-keys.json.enc"),
 	}
 
 	unsealKeysEncryptedObject, err := S3Service.GetObject(unsealKeysRequest)
